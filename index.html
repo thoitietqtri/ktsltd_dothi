@@ -7,7 +7,7 @@
   <style>
     :root{
       --bg:#f6f8ff; --card:#fff; --txt:#0f172a; --muted:#64748b; --pri:#1d4ed8;
-      --ok:#16a34a; --err:#dc2626; --grid:#e2e8f0; --grid-strong:#94a3b8;
+      --ok:#16a34a; --warn:#f59e0b; --err:#dc2626; --grid:#e2e8f0; --grid-strong:#94a3b8;
       --shadow:0 10px 30px -14px rgba(2,6,23,.25);
       --radius:14px;
     }
@@ -93,26 +93,19 @@
     thead th:first-child{left:0; z-index:4}
     tbody td:first-child{position:sticky; left:0; background:#fff; z-index:3; text-align:left}
 
-    /* ===== DATETIME ===== */
-    .dt{display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:end; position:relative; z-index:30;}
-    .dt input[type="datetime-local"]{
-      height:44px; background:#f8fafc; border:1.5px solid var(--grid-strong); font-weight:600; letter-spacing:.2px;
-      padding-right:36px; position:relative; z-index:31;
-    }
+    /* ===== DETAIL SUMMARY TABLE (like image) ===== */
+    .summary-card{margin-top:12px}
+    .detail-table{width:100%; border-collapse:separate; border-spacing:0; font-size:13px; min-width:1100px}
+    .detail-table thead th, .detail-table tbody td{padding:6px 10px; border-right:1px solid var(--grid-strong); border-bottom:1px solid var(--grid-strong); text-align:center}
+    .detail-table thead th{background:#fff; position:sticky; top:0; z-index:2}
+    .detail-table tbody td.station{position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:3; min-width:160px}
+    .badge{display:inline-block;padding:4px 8px;border-radius:8px;font-weight:700}
+    .ok{background:#d1fae5;color:#065f46}
+    .warn{background:#fef3c7;color:#92400e}
+    .danger{background:#fee2e2;color:#7f1d1d}
+    .muted{color:var(--muted);font-size:12px}
 
-    /* ===== ALERT TABLE (STATIC) ===== */
-    .alert-box{border:2px solid #ef4444; border-radius:12px; padding:10px}
-    .alert-scroll{max-height:270px; overflow:auto; border:1px solid #fecaca; border-radius:10px; background:#fff}
-    .alert-table{width:100%; border-collapse:separate; border-spacing:0; font-size:12px}
-    .alert-table th,.alert-table td{
-      padding:6px 8px; text-align:center; vertical-align:middle;
-      border-right:1px solid #fecaca; border-bottom:1px solid #fecaca
-    }
-    .alert-table th:first-child,.alert-table td:first-child{border-left:1px solid #fecaca}
-    .alert-table thead th{position:sticky; top:0; background:#fff5f5; z-index:1}
-    .alert-table tbody td{color:#dc2626; font-weight:700}
-    .name-left{text-align:left}
-
+    /* small screens */
     @media (max-width:1100px){
       .shell{grid-template-columns:1fr}
       .toolbar{top:calc(64px + 8px)}
@@ -155,7 +148,7 @@
       <h3 class="section-title">Chọn trạm & thời gian</h3>
       <label>Chọn các trạm (Giữ Ctrl/Shift để chọn nhiều)</label>
       <select id="multiSelect" multiple size="10" style="height:240px"></select>
-      <div class="status" style="color:var(--muted)">Mặc định chọn 4 trạm đầu tiên. Chọn nhiều trạm: bảng sẽ có thanh kéo ngang.</div>
+      <div class="status" style="color:var(--muted)">Mặc định chọn tất cả trạm. Chọn nhiều trạm: bảng sẽ có thanh kéo ngang.</div>
 
       <div class="dt" style="margin-top:10px">
         <div>
@@ -186,8 +179,12 @@
     <div class="section">
       <h3 class="section-title">Thao tác</h3>
       <div class="row">
-        <button id="btnFetch" class="btn">Lấy dữ liệu</button>
-        <button id="btnClear" class="btn secondary">Xoá kết quả</button>
+        <div>
+          <button id="btnFetch" class="btn">Lấy dữ liệu</button>
+        </div>
+        <div>
+          <button id="btnClear" class="btn secondary">Xoá kết quả</button>
+        </div>
       </div>
     </div>
 
@@ -200,6 +197,7 @@
             <tr><th style="width:42px">TT</th><th>Tên sông</th><th>Tên trạm</th><th>I</th><th>II</th><th>III</th></tr>
           </thead>
           <tbody>
+            <!-- (giữ nguyên danh sách mẫu, bạn có thể cập nhật Excel để thay đổi) -->
             <tr><td>1</td><td class="name-left">Gianh</td><td class="name-left">Mai Hóa</td><td>3.0</td><td>5.0</td><td>6.5</td></tr>
             <tr><td>2</td><td class="name-left">Gianh</td><td class="name-left">Đồng Tâm</td><td>7.0</td><td>13.0</td><td>16.0</td></tr>
             <tr><td>3</td><td class="name-left">Gianh</td><td class="name-left">Tân Mỹ</td><td>1.1</td><td>1.3</td><td>1.5</td></tr>
@@ -231,7 +229,10 @@
   <!-- ===== MAIN ===== -->
   <main style="display:grid; gap:16px;">
     <div class="card toolbar">
-      <div class="summary" id="summary">Chưa có dữ liệu. Hãy chọn trạm & thời gian rồi bấm “Lấy dữ liệu”.</div>
+      <div style="display:flex; gap:12px; align-items:center;">
+        <div class="summary" id="summary">Chưa có dữ liệu. Hãy chọn trạm & thời gian rồi bấm “Lấy dữ liệu”.</div>
+        <button id="btnRebuildSummary" class="btn ghost" style="margin-left:10px; background:#eef2ff; color:#1e40af; border:1px solid #cbd5e1;">Làm mới bảng tổng hợp</button>
+      </div>
       <div class="toolbar-actions">
         <button id="btnExport" class="btn ghost" disabled>Tải CSV</button>
         <button id="btnExportXlsx" class="btn ghost" disabled>Tải Excel (.xlsx)</button>
@@ -241,11 +242,39 @@
     <!-- KẾT QUẢ: bảng trái + đồ thị phải -->
     <div class="card" style="padding:12px">
       <div class="results-grid">
-        <div class="scroll" id="tableBox" style="padding:0">
-          <table>
-            <thead><tr id="thead"></tr></thead>
-            <tbody id="tbody"></tbody>
-          </table>
+        <div style="display:grid; gap:12px">
+          <div class="scroll" id="tableBox" style="padding:0">
+            <table>
+              <thead><tr id="thead"></tr></thead>
+              <tbody id="tbody"></tbody>
+            </table>
+          </div>
+
+          <!-- BẢNG TỔNG HỢP CHI TIẾT (mimic image) -->
+          <div class="card summary-card">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px">
+              <div style="font-weight:800">BẢNG TỔNG HỢP CHI TIẾT</div>
+              <div class="muted" style="font-size:12px">Hiển thị BD1/BD2/BD3, các giá trị thời gian gần nhất và SSB</div>
+            </div>
+            <div class="scroll" style="max-height:360px; overflow:auto">
+              <table class="detail-table" id="detailTable">
+                <thead>
+                  <tr id="detailHead">
+                    <th>Trạm thủy văn</th>
+                    <th>BD1</th>
+                    <th>BD2</th>
+                    <th>BD3</th>
+                    <!-- dynamic time columns inserted here -->
+                    <th>SSB1</th>
+                    <th>SSB2</th>
+                    <th>SSB3</th>
+                    <th>Hiện trạng</th>
+                  </tr>
+                </thead>
+                <tbody id="detailBody"></tbody>
+              </table>
+            </div>
+          </div>
         </div>
 
         <!-- Chart box -->
@@ -272,7 +301,7 @@ const toLocalDatetimeValue = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${p
 const quote = s => `'${s}'`;
 function buildProxyUrl(p){ return `${API_PROXY}?` + new URLSearchParams(p).toString(); }
 
-/* CSV/XLSX Export */
+/* CSV/XLSX Export helpers (kept simple) */
 function toCSV(rows){
   if(!rows?.length) return "";
   const cols = Object.keys(rows[0]);
@@ -281,22 +310,22 @@ function toCSV(rows){
   const body = rows.map(r => cols.map(c => esc(r[c])).join(",")).join("\n");
   return head+"\n"+body;
 }
-function downloadCSV(rows){
+function downloadCSV(rows, filename='mucnuoc_ketqua.csv'){
   const csv = toCSV(rows);
   const bom = '\uFEFF';
   const blob = new Blob([bom, csv], {type: 'text/csv;charset=utf-8;'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
-  a.href = url; a.download = 'mucnuoc_ketqua.csv';
+  a.href = url; a.download = filename;
   document.body.appendChild(a); a.click(); a.remove();
   URL.revokeObjectURL(url);
 }
-function downloadXLSX(rows){
+function downloadXLSX(rows, filename='mucnuoc_ketqua.xlsx'){
   if (!rows?.length) return;
   const wb = XLSX.utils.book_new();
   const ws = XLSX.utils.json_to_sheet(rows);
   XLSX.utils.book_append_sheet(wb, ws, 'DuLieu');
-  XLSX.writeFile(wb, 'mucnuoc_ketqua.xlsx');
+  XLSX.writeFile(wb, filename);
 }
 
 /* Fetch JSON (fallback AllOrigins nếu CORS lỗi) */
@@ -354,9 +383,10 @@ function fillStationSelects(){
     o.value=i; o.textContent=(r.tentram||'(không tên)').trim();
     box.appendChild(o);
   });
- for(let i=0;i<box.options.length;i++){ box.options[i].selected = true; }
-
+  // mặc định chọn tất cả trạm (theo yêu cầu)
+  for(let i=0;i<box.options.length;i++){ box.options[i].selected = true; }
 }
+
 function renderTable(rows){
   const thead=$('#thead'), tbody=$('#tbody'); thead.innerHTML=''; tbody.innerHTML='';
   if(!Array.isArray(rows)||!rows.length){
@@ -449,6 +479,7 @@ function findBDFor(stationName){
 }
 
 /* ===== CHART (SVG thuần, robust) ===== */
+/* (giữ nguyên như mã chuẩn - không sửa) */
 function parseTimeMaybe(s){
   if(s==null) return NaN;
   const t=String(s).trim(); if(!t) return NaN;
@@ -640,6 +671,97 @@ function renderChart(rows){
   ro.observe($('#chartBox'));
 }
 
+/* ===== DETAILED SUMMARY BUILDER (mimic image) ===== */
+function fmt(v, d=2){ if(v==null || Number.isNaN(v)) return ''; return Number(v).toFixed(d); }
+function buildDetailSummaryRows(stations, datasets){
+  const bdmap = window.__BD_MAP || new Map();
+  const rows = [];
+  // each station: find last N points
+  for(const s of stations){
+    const name = s.tentram || s.matram;
+    const data = datasets[name] || datasets[s.matram] || [];
+    // extract time+value pairs, normalized
+    const pts = data.map(r=>{
+      const t = TIME_KEYS.map(k=>r[k]).find(x=>x!==undefined);
+      const v = VALUE_KEYS.map(k=>r[k]).find(x=>x!==undefined);
+      return {t: normTime(t), v: toNum(v)};
+    }).filter(p=>p.t && !Number.isNaN(p.v)).sort((a,b)=>parseTimeMaybe(a.t)-parseTimeMaybe(b.t));
+    // pick last up to 7 values for columns (rightmost=latest)
+    const lastN = 7;
+    const lastVals = pts.slice(Math.max(0, pts.length-lastN)).map(x=>x.v);
+    const lastTimes = pts.slice(Math.max(0, pts.length-lastN)).map(x=>x.t);
+    const lastVal = lastVals.length? lastVals[lastVals.length-1] : null;
+    // SSB: difference last - BDn
+    const bd = findBDFor(name) || {bd1:null,bd2:null,bd3:null};
+    const ssb1 = (lastVal!=null && bd.bd1!=null)? (lastVal - bd.bd1) : null;
+    const ssb2 = (lastVal!=null && bd.bd2!=null)? (lastVal - bd.bd2) : null;
+    const ssb3 = (lastVal!=null && bd.bd3!=null)? (lastVal - bd.bd3) : null;
+    // state
+    let state = '';
+    let cls = '';
+    if(lastVal==null){ state='No data'; cls=''; }
+    else if(bd.bd3!=null && lastVal >= bd.bd3){ state='Vượt BĐ3'; cls='danger'; }
+    else if(bd.bd2!=null && lastVal >= bd.bd2){ state='Vượt BĐ2'; cls='warn'; }
+    else if(bd.bd1!=null && lastVal >= bd.bd1){ state='Vượt BĐ1'; cls='warn'; }
+    else { state='Bình thường'; cls='ok'; }
+    rows.push({
+      tentram: name,
+      bd1: bd.bd1, bd2: bd.bd2, bd3: bd.bd3,
+      lastVals, lastTimes, lastVal, ssb1, ssb2, ssb3, state, cls
+    });
+  }
+  return rows;
+}
+
+function renderDetailTable(){
+  const stations_list = window.__STATIONS_LIST || stations;
+  const datasets = window.__LAST_DATASETS || {};
+  const rows = buildDetailSummaryRows(stations_list, datasets);
+  const head = document.getElementById('detailHead');
+  const body = document.getElementById('detailBody');
+  // clear
+  // determine dynamic time columns: find union of lastTimes (take most common aligned by index)
+  // we'll show up to 7 recent timestamps (same for all: compute the most recent global timestamps)
+  const allTimes = [];
+  Object.values(datasets).forEach(arr=>{
+    arr.forEach(r=>{
+      const t = pickField(r, TIME_KEYS);
+      if(t) allTimes.push(normTime(t));
+    });
+  });
+  // unique sorted
+  const uniqTimes = Array.from(new Set(allTimes)).sort((a,b)=>parseTimeMaybe(a)-parseTimeMaybe(b));
+  const lastTimesGlobal = uniqTimes.slice(Math.max(0, uniqTimes.length-7));
+  // build header columns: fixed + dynamic times + SSB + state
+  // rebuild header
+  let h = '<th>Trạm thủy văn</th><th>BD1</th><th>BD2</th><th>BD3</th>';
+  for(const t of lastTimesGlobal) h += `<th style="min-width:64px">${t}</th>`;
+  h += '<th>SSB1</th><th>SSB2</th><th>SSB3</th><th>Hiện trạng</th>';
+  head.innerHTML = h;
+  // build body
+  body.innerHTML = '';
+  for(const r of rows){
+    let tr = document.createElement('tr');
+    let rowHtml = `<td class="station">${r.tentram}</td>`;
+    rowHtml += `<td>${fmt(r.bd1)}</td><td>${fmt(r.bd2)}</td><td>${fmt(r.bd3)}</td>`;
+    // for each global time column, find value for this station at that timestamp (exact match)
+    for(const t of lastTimesGlobal){
+      // try to find index in r.lastTimes (may be shorter)
+      const idx = r.lastTimes.indexOf(t);
+      const v = idx>=0 ? r.lastVals[idx] : '';
+      rowHtml += `<td>${v!==''?fmt(v):''}</td>`;
+    }
+    rowHtml += `<td>${r.ssb1!=null?fmt(r.ssb1):''}</td>`;
+    rowHtml += `<td>${r.ssb2!=null?fmt(r.ssb2):''}</td>`;
+    rowHtml += `<td>${r.ssb3!=null?fmt(r.ssb3):''}</td>`;
+    const badge = r.cls ? `<span class="badge ${r.cls}">${r.state}</span>` : r.state;
+    rowHtml += `<td>${badge}</td>`;
+    tr.innerHTML = rowHtml;
+    body.appendChild(tr);
+  }
+  window.__DETAIL_ROWS = rows;
+}
+
 /* ===== MAIN FLOW ===== */
 async function init(){
   // mặc định: start = 00:00 của 2 ngày trước; end = now
@@ -672,8 +794,8 @@ async function init(){
     if(tinhtong===1){ s.setHours(0,0,0,0); e.setHours(23,59,0,0);
       $('#startDt').value=toLocalDT(s); $('#endDt').value=toLocalDT(e);
     }
-    const fmt=(dt)=>`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
-    const sStr=fmt(s), eStr=fmt(e);
+    const fmtDate=(dt)=>`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
+    const sStr=fmtDate(s), eStr=fmtDate(e);
 
     const datasets={};
     $('#summary').textContent='Đang lấy dữ liệu…';
@@ -694,7 +816,12 @@ async function init(){
       }
     }));
 
-    // pivot theo thời gian
+    // Lưu datasets & stations global để các phần khác dùng
+    window.__LAST_DATASETS = datasets;
+    window.__STATIONS_LIST = stations;
+    localStorage.setItem('__LAST_DATASETS_JSON', JSON.stringify(datasets));
+
+    // pivot theo thời gian (giữ nguyên bảng log chính)
     const timeIndex=new Map();
     const names=Object.keys(datasets);
     for(const n of names){
@@ -709,24 +836,50 @@ async function init(){
     const rows=Array.from(timeIndex.values())
       .sort((a,b)=>String(a['thoi gian']).localeCompare(String(b['thoi gian'])));
     renderTable(rows);
+
+    // cập nhật bảng tổng hợp chi tiết tự động
+    initBDLevels(); // rebuild BD map (nếu user thay đổi table)
+    renderDetailTable();
+    $('#summary').textContent='Hoàn tất lấy dữ liệu.';
   });
 
   $('#btnClear').addEventListener('click', ()=>{
     $('#thead').innerHTML=''; $('#tbody').innerHTML='';
+    $('#detailHead').innerHTML=''; $('#detailBody').innerHTML='';
     $('#summary').textContent='Đã xoá kết quả.';
     $('#btnExport').disabled=true; $('#btnExportXlsx').disabled=true;
     renderChart([]);
   });
 
-  // Export
-  $('#btnExport').addEventListener('click', ()=> downloadCSV(window.__lastRows||[]));
-  $('#btnExportXlsx').addEventListener('click', ()=> downloadXLSX(window.__lastRows||[]));
+  // Export main result
+  $('#btnExport').addEventListener('click', ()=> downloadCSV(window.__lastRows||[], 'mucnuoc_ketqua.csv'));
+  $('#btnExportXlsx').addEventListener('click', ()=> downloadXLSX(window.__lastRows||[], 'mucnuoc_ketqua.xlsx'));
 
-  // Khởi tạo map ngưỡng BĐ từ bảng cảnh báo
+  // Rebuild summary button
+  $('#btnRebuildSummary').addEventListener('click', ()=>{
+    if(window.__LAST_DATASETS && window.__STATIONS_LIST){
+      initBDLevels();
+      renderDetailTable();
+      alert('Đã làm mới bảng tổng hợp.');
+    } else {
+      alert('Chưa có dữ liệu trong bộ nhớ. Hãy chạy "Lấy dữ liệu" trước.');
+    }
+  });
+
+  // Try auto load Excel & cached datasets
   initBDLevels();
-
-  try{ await tryAutoLoadExcel(); }
-  catch(e){ $('#xlsxStatus').className='status'; $('#xlsxStatus').textContent='Không tìm thấy file mặc định. Hãy chọn file .xlsx thủ công.'; }
+  try{
+    await tryAutoLoadExcel();
+    const ds = localStorage.getItem('__LAST_DATASETS_JSON');
+    if(ds){
+      window.__LAST_DATASETS = JSON.parse(ds);
+      window.__STATIONS_LIST = stations;
+      // render summary if datasets exist
+      renderDetailTable();
+    }
+  }catch(e){
+    $('#xlsxStatus').className='status'; $('#xlsxStatus').textContent='Không tìm thấy file mặc định. Hãy chọn file .xlsx thủ công.';
+  }
 }
 window.addEventListener('DOMContentLoaded', init);
 </script>
