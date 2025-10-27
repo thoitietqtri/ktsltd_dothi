@@ -502,6 +502,7 @@ function findBDFor(stationName){
 }
 
 /* ===== CHART (SVG thuần, robust) ===== */
+/* (giữ nguyên phần chart) */
 function parseTimeMaybe(s){
   if(s==null) return NaN;
   const t=String(s).trim(); if(!t) return NaN;
@@ -697,12 +698,17 @@ function renderChart(rows){
 function fmt(v, d=2){ if(v==null || Number.isNaN(v)) return ''; return Number(v).toFixed(d); }
 
 /*
-  Quy tắc hiển thị ký hiệu tại cột "Hiện trạng":
-  - Nếu numeric last value and equals any BD (within eps) => "="
-  - Else if numeric and >= BD1 => ">"
-  - Else numeric and < BD1 => "<"
-  - Nếu raw bắt đầu bằng '>'/'<'/'=' => lấy ký hiệu tương ứng
-  - Nếu không có dữ liệu => "No data"
+  Quy tắc hiển thị ký hiệu và chuỗi BĐ:
+  - Nếu có numeric lastVal:
+      * Nếu gần bằng (eps) BD3/BD2/BD1 => symbol '=' và BD đó (diff ~0)
+      * Else if >= BD3 => '>' và BĐ3
+      * Else if >= BD2 => '>' và BĐ2
+      * Else if >= BD1 => '>' và BĐ1
+      * Else '<' và BĐ1
+    Hiển thị: "< BĐ 1: 0.85" hoặc "> BĐ 2: 3.35" hoặc "= BĐ 1: 0.00"
+  - Nếu API trả raw có operator ('>','<','=') và numeric part:
+      * Sử dụng operator làm symbol; chọn BĐ theo quy tắc: nếu value >= bd3 -> BĐ3; else if >=bd2 -> BĐ2; else if >=bd1 -> BĐ1; else BĐ1
+  - Nếu không có dữ liệu numeric hoặc raw -> "No data"
 */
 function buildDetailSummaryRows(stationsList, datasets){
   const rows = [];
@@ -735,38 +741,75 @@ function buildDetailSummaryRows(stationsList, datasets){
     const ssb2 = (lastValNum!=null && bd.bd2!=null)? (lastValNum - bd.bd2) : null;
     const ssb3 = (lastValNum!=null && bd.bd3!=null)? (lastValNum - bd.bd3) : null;
 
-    // determine symbol
+    // determine symbol + BD label + diff
     let symbol = '';
+    let bdLabel = '';
+    let diff = null;
     let cls = '';
-    (function determineSymbol(){
+
+    (function determine(){
       const raw = (lastValRaw||'').trim();
-      const rawOpMatch = raw.match(/^([<>]=?|=)/);
-      if(rawOpMatch){
-        // if API already returns operator, keep it
-        symbol = rawOpMatch[1].replace('>=','>').replace('<=','<'); // normalize >=/<= to >/< for a single-char display
-      } else if (Number.isFinite(lastValNum)){
-        const eps = 0.01;
-        // if equals any BD within eps -> "="
-        if(bd.bd1!=null && Math.abs(lastValNum - bd.bd1) <= eps){ symbol = '='; }
-        else if(bd.bd2!=null && Math.abs(lastValNum - bd.bd2) <= eps){ symbol = '='; }
-        else if(bd.bd3!=null && Math.abs(lastValNum - bd.bd3) <= eps){ symbol = '='; }
-        else if(bd.bd1!=null && lastValNum >= bd.bd1){ symbol = '>'; }
-        else { symbol = '<'; }
-      } else {
-        symbol = ''; // No data
+      const rawOpMatch = raw.match(/^([<>]=?|=)\s*(\d+(\.\d+)?)/);
+      const eps = 0.01;
+
+      // helper to pick BD by numeric value
+      function pickBDByValue(v){
+        if(v==null) return {label:'BĐ 1', val: bd.bd1};
+        if(bd.bd3!=null && v >= bd.bd3) return {label:'BĐ 3', val: bd.bd3};
+        if(bd.bd2!=null && v >= bd.bd2) return {label:'BĐ 2', val: bd.bd2};
+        if(bd.bd1!=null) return {label:'BĐ 1', val: bd.bd1};
+        return {label:'BĐ 1', val: null};
       }
 
-      // class mapping (giữ style badge nhưng hiển thị ký hiệu)
+      if(rawOpMatch){
+        // API provided operator + number
+        const op = rawOpMatch[1];
+        const num = toNum(rawOpMatch[2]);
+        symbol = op.replace('>=','>').replace('<=','<'); // normalize to single-char for display
+        const picked = pickBDByValue(num);
+        bdLabel = picked.label;
+        if(picked.val!=null) diff = Math.abs(num - picked.val);
+      } else if (Number.isFinite(lastValNum)){
+        // numeric logic: check equals (eps) first, then >= thresholds
+        if(bd.bd3!=null && Math.abs(lastValNum - bd.bd3) <= eps){ symbol='='; bdLabel='BĐ 3'; diff = Math.abs(lastValNum - bd.bd3); }
+        else if(bd.bd2!=null && Math.abs(lastValNum - bd.bd2) <= eps){ symbol='='; bdLabel='BĐ 2'; diff = Math.abs(lastValNum - bd.bd2); }
+        else if(bd.bd1!=null && Math.abs(lastValNum - bd.bd1) <= eps){ symbol='='; bdLabel='BĐ 1'; diff = Math.abs(lastValNum - bd.bd1); }
+        else if(bd.bd3!=null && lastValNum >= bd.bd3){ symbol='>'; bdLabel='BĐ 3'; diff = Math.abs(lastValNum - bd.bd3); }
+        else if(bd.bd2!=null && lastValNum >= bd.bd2){ symbol='>'; bdLabel='BĐ 2'; diff = Math.abs(lastValNum - bd.bd2); }
+        else if(bd.bd1!=null && lastValNum >= bd.bd1){ symbol='>'; bdLabel='BĐ 1'; diff = Math.abs(lastValNum - bd.bd1); }
+        else if(bd.bd1!=null){ symbol='<'; bdLabel='BĐ 1'; diff = Math.abs(lastValNum - bd.bd1); }
+        else { symbol=''; bdLabel=''; diff = null; }
+      } else {
+        // no numeric info
+        symbol = '';
+        bdLabel = '';
+        diff = null;
+      }
+
+      // class mapping for badge color
       if(symbol === '>'){ cls='danger'; }
       else if(symbol === '='){ cls='warn'; }
       else if(symbol === '<'){ cls='ok'; }
       else { cls=''; }
     })();
 
+    // prepare display string for Hiện trạng cell: e.g. "> BĐ 1: 3.35"
+    let stateDisplay = '';
+    if(symbol){
+      if(diff!=null && !Number.isNaN(diff)){
+        stateDisplay = `${symbol} ${bdLabel}: ${Math.abs(diff).toFixed(2)}`;
+      } else {
+        stateDisplay = `${symbol} ${bdLabel}`.trim();
+      }
+    } else {
+      stateDisplay = (lastValRaw && lastValRaw.length)? lastValRaw : 'No data';
+    }
+
     rows.push({
       tentram: name,
       bd1: bd.bd1, bd2: bd.bd2, bd3: bd.bd3,
-      lastValsRaw, lastValsNum, lastTimes, lastValNum, lastValRaw, ssb1, ssb2, ssb3, symbol, cls
+      lastValsRaw, lastValsNum, lastTimes, lastValNum, lastValRaw, ssb1, ssb2, ssb3,
+      symbol, bdLabel, diff, cls, stateDisplay
     });
   }
   return rows;
@@ -818,7 +861,8 @@ function renderDetailTable(){
     html += `<td>${r.ssb2!=null?fmt(r.ssb2):''}</td>`;
     html += `<td>${r.ssb3!=null?fmt(r.ssb3):''}</td>`;
 
-    const badge = r.cls ? `<span class="badge ${r.cls}">${r.symbol||''}</span>` : (r.symbol||'');
+    // Hiện trạng: show badge with stateDisplay
+    const badge = r.cls ? `<span class="badge ${r.cls}">${r.stateDisplay}</span>` : r.stateDisplay;
     html += `<td>${badge}</td>`;
     tr.innerHTML = html;
     tbody.appendChild(tr);
