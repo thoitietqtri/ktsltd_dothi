@@ -68,7 +68,7 @@
       position:sticky; top:calc(64px + 16px); z-index:3;
     }
     .summary{font-size:13px; color:#1f2937}
-    .toolbar-actions{Display:flex; gap:8px}
+    .toolbar-actions{display:flex; gap:8px}
 
     /* ===== RESULTS GRID (table left + chart right) ===== */
     .results-grid{
@@ -117,18 +117,11 @@
     .detail-table{border-collapse:separate; border-spacing:0; font-size:12px; min-width:900px}
     .detail-table thead th, .detail-table tbody td{padding:6px 10px; border-right:1px solid var(--grid-strong); border-bottom:1px solid var(--grid-strong); text-align:center}
     .detail-table tbody td.station{position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:3; min-width:180px}
-    .badge{display:inline-block;padding:6px 10px;border-radius:10px;font-weight:700}
+    .badge{display:inline-block;padding:4px 8px;border-radius:8px;font-weight:700}
     .ok{background:#d1fae5;color:#065f46}
     .warn{background:#fef3c7;color:#92400e}
-    .bd2{background:#fde68a;color:#92400e} /* between BD2 */
     .danger{background:#fee2e2;color:#7f1d1d}
     .muted{color:var(--muted);font-size:12px}
-
-    /* SSB cell small color helpers */
-    .ssb-ok{background:#d1fae5}
-    .ssb-warn{background:#fef3c7}
-    .ssb-bd2{background:#fde68a}
-    .ssb-danger{background:#fee2e2}
 
     @media (max-width:1100px){
       .shell{grid-template-columns:1fr}
@@ -273,9 +266,12 @@
         </div>
       </div>
 
-      <!-- BẢNG TỔNG HỢP (ĐƯỢC THÊM) -->
+      <!-- ===== ADDED: BẢNG TỔNG HỢP (GIỐNG ẢNH) =====
+           - Giữ nguyên giao diện cũ, chèn bảng ngay dưới vùng results-grid
+           - Bảng được sinh từ window.__LAST_DATASETS (được tạo khi bấm Lấy dữ liệu)
+      -->
       <div style="margin-top:12px">
-        <div style="font-weight:800; margin-bottom:6px">BẢNG TỔNG HỢP CHI TIẾT</div>
+        <div style="font-weight:800; margin-bottom:6px">BẢNG TỔNG HỢP CHI TIẾT (như mẫu)</div>
         <div class="scroll" style="border-radius:10px; padding:8px; background:#fff">
           <table class="detail-table" id="detailTable">
             <thead id="detailHead">
@@ -284,7 +280,7 @@
                 <th>I</th>
                 <th>II</th>
                 <th>III</th>
-                <!-- time cols injected by JS -->
+                <!-- dynamic recent time columns will be injected here by JS -->
                 <th>SSB1</th>
                 <th>SSB2</th>
                 <th>SSB3</th>
@@ -295,7 +291,7 @@
           </table>
         </div>
       </div>
-      <!-- END BẢNG TỔNG HỢP -->
+      <!-- ===== END ADDED ===== -->
     </div>
   </main>
 </div>
@@ -395,8 +391,11 @@ function fillStationSelects(){
     o.value=i; o.textContent=(r.tentram||'(không tên)').trim();
     box.appendChild(o);
   });
- for(let i=0;i<box.options.length;i++){ box.options[i].selected = true; }
-
+  // default: select first 4 originally, but user asked to keep original default.
+  // Keep original behavior: select 4 first by default (as original code said).
+  for(let i=0;i<box.options.length;i++){
+    box.options[i].selected = (i<4); // original default 4 first
+  }
 }
 function renderTable(rows){
   const thead=$('#thead'), tbody=$('#tbody'); thead.innerHTML=''; tbody.innerHTML='';
@@ -490,7 +489,6 @@ function findBDFor(stationName){
 }
 
 /* ===== CHART (SVG thuần, robust) ===== */
-/* (giữ nguyên như mã bạn cung cấp) */
 function parseTimeMaybe(s){
   if(s==null) return NaN;
   const t=String(s).trim(); if(!t) return NaN;
@@ -682,10 +680,11 @@ function renderChart(rows){
   ro.observe($('#chartBox'));
 }
 
-/* ===== DETAIL SUMMARY BUILD + RENDER (UPDATED COLORS) ===== */
+/* ===== DETAIL SUMMARY BUILD + RENDER (ADDED) ===== */
 function fmt(v, d=2){ if(v==null || Number.isNaN(v)) return ''; return Number(v).toFixed(d); }
 
 function buildDetailSummaryRows(stationsList, datasets){
+  const bdmap = window.__BD_MAP || new Map();
   const rows = [];
   for(const s of stationsList){
     const name = s.tentram || s.matram;
@@ -707,19 +706,17 @@ function buildDetailSummaryRows(stationsList, datasets){
     const ssb1 = (lastVal!=null && bd.bd1!=null)? (lastVal - bd.bd1) : null;
     const ssb2 = (lastVal!=null && bd.bd2!=null)? (lastVal - bd.bd2) : null;
     const ssb3 = (lastVal!=null && bd.bd3!=null)? (lastVal - bd.bd3) : null;
-
-    // status: priority BD3 > BD2 > BD1 > normal
-    let statusText='No data', statusClass='';
-    if(lastVal==null){ statusText='No data'; statusClass=''; }
-    else if(bd.bd3!=null && lastVal >= bd.bd3){ statusText='Vượt BĐ3'; statusClass='danger'; }
-    else if(bd.bd2!=null && lastVal >= bd.bd2){ statusText='Vượt BĐ2'; statusClass='bd2'; }
-    else if(bd.bd1!=null && lastVal >= bd.bd1){ statusText='Vượt BĐ1'; statusClass='warn'; }
-    else { statusText='Bình thường'; statusClass='ok'; }
-
+    let state = '';
+    let cls = '';
+    if(lastVal==null){ state='No data'; cls=''; }
+    else if(bd.bd3!=null && lastVal >= bd.bd3){ state='Vượt BĐ3'; cls='danger'; }
+    else if(bd.bd2!=null && lastVal >= bd.bd2){ state='Vượt BĐ2'; cls='warn'; }
+    else if(bd.bd1!=null && lastVal >= bd.bd1){ state='Vượt BĐ1'; cls='warn'; }
+    else { state='Bình thường'; cls='ok'; }
     rows.push({
       tentram: name,
       bd1: bd.bd1, bd2: bd.bd2, bd3: bd.bd3,
-      lastVals, lastTimes, lastVal, ssb1, ssb2, ssb3, statusText, statusClass
+      lastVals, lastTimes, lastVal, ssb1, ssb2, ssb3, state, cls
     });
   }
   return rows;
@@ -758,16 +755,129 @@ function renderDetailTable(){
       const v = idx>=0 ? r.lastVals[idx] : '';
       html += `<td>${v!==''?fmt(v):''}</td>`;
     }
-    // SSB cells: color based on exceedance for each BDn
-    function ssbCell(val, bd){
-      if(val==null || bd==null) return `<td>${val==null?'':fmt(val)}</td>`;
-      // decide class: danger > bd3; bd2 > bd2; warn > bd1; ok otherwise (val < 0 => ok)
-      const last = (r.lastVal!=null)? r.lastVal : null;
-      let cls='';
-      if(last!=null && bd!=null){
-        if(r.bd3!=null && last >= r.bd3) cls='ssb-danger';
-        else if(r.bd2!=null && last >= r.bd2) cls='ssb-bd2';
-        else if(r.bd1!=null && last >= r.bd1) cls='ssb-warn';
-        else cls='ssb-ok';
+    html += `<td>${r.ssb1!=null?fmt(r.ssb1):''}</td>`;
+    html += `<td>${r.ssb2!=null?fmt(r.ssb2):''}</td>`;
+    html += `<td>${r.ssb3!=null?fmt(r.ssb3):''}</td>`;
+    const badge = r.cls ? `<span class="badge ${r.cls}">${r.state}</span>` : r.state;
+    html += `<td>${badge}</td>`;
+    tr.innerHTML = html;
+    tbody.appendChild(tr);
+  }
+  window.__DETAIL_ROWS = rows;
+}
+
+/* ===== MAIN FLOW ===== */
+async function init(){
+  // mặc định: start = 00:00 của 2 ngày trước; end = now
+  const now=new Date(), s0=new Date(now); s0.setDate(now.getDate()-2); s0.setHours(0,0,0,0);
+  $('#startDt').value=toLocalDT(s0);
+  $('#endDt').value=toLocalDT(now);
+  setDateLimits();
+  $('#startDt').addEventListener('change', setDateLimits);
+  $('#endDt').addEventListener('change', setDateLimits);
+
+  $('#btnAutoXlsx').addEventListener('click', async ()=>{
+    try{ await tryAutoLoadExcel(); }catch(e){ $('#xlsxStatus').className='status err'; $('#xlsxStatus').textContent=e.message; }
+  });
+  $('#fileXlsx').addEventListener('change', async ev=>{
+    const f=ev.target.files?.[0]; if(!f) return;
+    try{ const ab=await f.arrayBuffer(); const wb=XLSX.read(ab,{type:'array'}); loadFromWorkbook(wb); }
+    catch(e){ $('#xlsxStatus').className='status err'; $('#xlsxStatus').textContent=e.message; }
+  });
+
+  $('#btnFetch').addEventListener('click', async ()=>{
+    if(!stations.length){ alert('Chưa nạp danh sách trạm từ Excel.'); return; }
+    const pass=$('#passcode').value.trim();
+    let s=new Date($('#startDt').value), e=new Date($('#endDt').value);
+    if(!(s.getTime()<e.getTime())){ alert('Khoảng thời gian không hợp lệ.'); return; }
+
+    const indices=Array.from($('#multiSelect').selectedOptions).map(o=>Number(o.value));
+    if(!indices.length){ alert('Hãy chọn ít nhất 1 trạm.'); return; }
+
+    const tinhtong=$('#tinhtong').checked?1:0;
+    if(tinhtong===1){ s.setHours(0,0,0,0); e.setHours(23,59,0,0);
+      $('#startDt').value=toLocalDT(s); $('#endDt').value=toLocalDT(e);
+    }
+    const fmt=(dt)=>`${dt.getFullYear()}-${pad(dt.getMonth()+1)}-${pad(dt.getDate())} ${pad(dt.getHours())}:${pad(dt.getMinutes())}:00`;
+    const sStr=fmt(s), eStr=fmt(e);
+
+    const datasets={};
+    $('#summary').textContent='Đang lấy dữ liệu…';
+    await Promise.all(indices.map(async idx=>{
+      const r=stations[idx];
+      const ten_table=($('#tenTable').value.trim()||r.Tab||'mucnuoc_oday');
+      const sophut=Number($('#sophut').value||r.sophut||60)||60;
+      const params={ matram:r.matram, ten_table, sophut:String(sophut), tinhtong:String(tinhtong),
+                     thoigianbd:quote(sStr), thoigiankt:quote(eStr) };
+      if(pass) params.passcode=pass;
+      const url=buildProxyUrl(params);
+      try{
+        const data=await fetchJSON(url);
+        datasets[r.tentram||r.matram]=Array.isArray(data)?data:[];
+      }catch(e){
+        console.warn('Fetch lỗi', r.matram, e);
+        datasets[r.tentram||r.matram]=[];
       }
-      return `<td class="${cls}" style="min-w
+    }));
+
+    // lưu datasets & stations global để phần tổng hợp dùng
+    window.__LAST_DATASETS = datasets;
+    window.__STATIONS_LIST = stations;
+    try{ localStorage.setItem('__LAST_DATASETS_JSON', JSON.stringify(datasets)); }catch(e){/* ignore storage errors */ }
+
+    // pivot theo thời gian (giữ nguyên)
+    const timeIndex=new Map();
+    const names=Object.keys(datasets);
+    for(const n of names){
+      for(const row of (datasets[n]||[])){
+        const t=normTime(pickField(row, TIME_KEYS));
+        const v=pickField(row, VALUE_KEYS);
+        if(!t) continue;
+        if(!timeIndex.has(t)) timeIndex.set(t, {"thoi gian": t});
+        timeIndex.get(t)[n]=v;
+      }
+    }
+    const rows=Array.from(timeIndex.values())
+      .sort((a,b)=>String(a['thoi gian']).localeCompare(String(b['thoi gian'])));
+    renderTable(rows);
+
+    // cập nhật bảng tổng hợp chi tiết (mới thêm) — không làm thay đổi giao diện gốc
+    initBDLevels();
+    renderDetailTable();
+    $('#summary').textContent='Hoàn tất lấy dữ liệu.';
+  });
+
+  $('#btnClear').addEventListener('click', ()=>{
+    $('#thead').innerHTML=''; $('#tbody').innerHTML='';
+    $('#detailHead').innerHTML = '<tr><th>Trạm thủy văn</th><th>I</th><th>II</th><th>III</th><th>SSB1</th><th>SSB2</th><th>SSB3</th><th>Hiện trạng</th></tr>';
+    $('#detailBody').innerHTML='';
+    $('#summary').textContent='Đã xoá kết quả.';
+    $('#btnExport').disabled=true; $('#btnExportXlsx').disabled=true;
+    renderChart([]);
+  });
+
+  // Export
+  $('#btnExport').addEventListener('click', ()=> downloadCSV(window.__lastRows||[]));
+  $('#btnExportXlsx').addEventListener('click', ()=> downloadXLSX(window.__lastRows||[]));
+
+  // Khởi tạo map ngưỡng BĐ từ bảng cảnh báo
+  initBDLevels();
+
+  try{ await tryAutoLoadExcel(); }
+  catch(e){ $('#xlsxStatus').className='status'; $('#xlsxStatus').textContent='Không tìm thấy file mặc định. Hãy chọn file .xlsx thủ công.'; }
+
+  // nếu có cached datasets, nạp vào detail table
+  try{
+    const ds = localStorage.getItem('__LAST_DATASETS_JSON');
+    if(ds){
+      window.__LAST_DATASETS = JSON.parse(ds);
+      window.__STATIONS_LIST = stations;
+      renderDetailTable();
+    }
+  }catch(e){}
+}
+window.addEventListener('DOMContentLoaded', init);
+</script>
+
+</body>
+</html>
