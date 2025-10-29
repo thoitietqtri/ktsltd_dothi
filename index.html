@@ -10,12 +10,12 @@
       --ok:#16a34a; --err:#dc2626; --grid:#e2e8f0; --grid-strong:#94a3b8;
       --shadow:0 10px 30px -14px rgba(2,6,23,.25);
       --radius:14px;
-      /* badge backgrounds (new) */
-      --badge-less-bg: #d1fae5;      /* xanh nhạt - nhỏ hơn BĐ */
-      --badge-bd1-bg: #fef9c3;       /* vàng nhạt - >= BĐ1 */
-      --badge-bd2-bg: #fde68a;       /* vàng đậm / cam nhẹ - >= BĐ2 */
-      --badge-bd3-bg: #fee2e2;       /* đỏ nhạt - >= BĐ3 / cảnh báo đỏ */
-      --badge-text: #000;            /* chữ đậm màu đen cho tất cả badge */
+      /* badge backgrounds - PHƯƠNG ÁN 2 (NỔI BẬT CAO) */
+      --badge-less-bg: #86efac;   /* xanh đậm hơn - nhỏ hơn BĐ */
+      --badge-bd1-bg: #f7e563;    /* vàng sáng - >= BĐ1 */
+      --badge-bd2-bg: #fb923c;    /* cam sáng - >= BĐ2 */
+      --badge-bd3-bg: #f87171;    /* đỏ tươi - >= BĐ3 */
+      --badge-text: #000;         /* chữ đậm màu đen cho tất cả badge */
     }
     *{box-sizing:border-box}
     html,body{height:100%}
@@ -124,7 +124,7 @@
     .detail-table thead th, .detail-table tbody td{padding:6px 10px; border-right:1px solid var(--grid-strong); border-bottom:1px solid var(--grid-strong); text-align:center}
     .detail-table tbody td.station{position:sticky; left:0; background:#fff; text-align:left; font-weight:700; z-index:3; min-width:180px}
     .badge{display:inline-block;padding:6px 10px;border-radius:8px;font-weight:900;color:var(--badge-text); font-size:13px}
-    /* new badge classes (meet requirement: black bold text + background colors by level) */
+    /* badge classes (PHƯƠNG ÁN 2) */
     .badge.less{ background: var(--badge-less-bg); color: var(--badge-text); font-weight:900; }
     .badge.bd1 { background: var(--badge-bd1-bg); color: var(--badge-text); font-weight:900; }
     .badge.bd2 { background: var(--badge-bd2-bg); color: var(--badge-text); font-weight:900; }
@@ -800,7 +800,7 @@ function buildDetailSummaryRows(stationsList, datasets){
 
       // Map to badge class:
       // - If symbol is '<' => less (green)
-      // - Else use levelNum: 1 -> bd1 (yellow light), 2 -> bd2 (yellow darker), 3 -> bd3 (red)
+      // - Else use levelNum: 1 -> bd1 (yellow light), 2 -> bd2 (orange), 3 -> bd3 (red)
       if(symbol === '<'){
         cls = 'less';
       } else {
