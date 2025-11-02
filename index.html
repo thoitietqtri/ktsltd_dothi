@@ -174,6 +174,15 @@
       <h3 class="section-title">Chọn trạm & thời gian</h3>
       <label>Chọn các trạm (Giữ Ctrl/Shift để chọn nhiều)</label>
       <select id="multiSelect" multiple size="10" style="height:240px"></select>
+
+      <!-- ADDED: nút CHỌN/BỎ CHỌN (ngay dưới select, giữ nguyên giao diện) -->
+      <div style="margin-top:8px; display:flex; gap:8px;">
+        <button id="btnToggleSelect" class="btn ghost" type="button">CHỌN/BỎ CHỌN</button>
+        <!-- giữ khoảng trống để không làm đổi layout (nếu muốn thêm trạng thái ngắn): -->
+        <div id="toggleNote" style="align-self:center;color:var(--muted);font-size:12px">Bấm để chọn/bỏ chọn tất cả</div>
+      </div>
+      <!-- END ADDED -->
+
       <div class="status" style="color:var(--muted)">Mặc định chọn 4 trạm đầu tiên. Chọn nhiều trạm: bảng sẽ có thanh kéo ngang.</div>
 
       <div class="dt" style="margin-top:10px">
@@ -418,7 +427,30 @@ function fillStationSelects(){
   });
   // mặc định chọn tất cả (giữ nguyên giao diện hiển thị)
   for(let i=0;i<box.options.length;i++){ box.options[i].selected = true; }
+  // cập nhật note nút toggle (nếu cần)
+  updateToggleNote();
 }
+
+/* Toggle select helper */
+function anyOptionUnselected(){
+  const box = $('#multiSelect');
+  for(let i=0;i<box.options.length;i++){
+    if (!box.options[i].selected) return true;
+  }
+  return false;
+}
+function updateToggleNote(){
+  const box = $('#multiSelect');
+  const note = $('#toggleNote');
+  if(!box) return;
+  if(anyOptionUnselected()){
+    note.textContent = 'Hiện: có option chưa chọn — bấm để CHỌN TẤT CẢ';
+  } else {
+    note.textContent = 'Hiện: tất cả đã chọn — bấm để BỎ CHỌN TẤT CẢ';
+  }
+}
+
+/* renderTable (giữ nguyên) */
 function renderTable(rows){
   const thead=$('#thead'), tbody=$('#tbody'); thead.innerHTML=''; tbody.innerHTML='';
   if(!Array.isArray(rows)||!rows.length){
@@ -907,6 +939,20 @@ async function init(){
     try{ const ab=await f.arrayBuffer(); const wb=XLSX.read(ab,{type:'array'}); loadFromWorkbook(wb); }
     catch(e){ $('#xlsxStatus').className='status err'; $('#xlsxStatus').textContent=e.message; }
   });
+
+  // ====== ADDED: Toggle select button behavior ======
+  $('#btnToggleSelect').addEventListener('click', ()=>{
+    const box = $('#multiSelect');
+    if(!box) return;
+    const anyUnsel = anyOptionUnselected();
+    for(let i=0;i<box.options.length;i++){
+      box.options[i].selected = anyUnsel ? true : false;
+    }
+    updateToggleNote();
+  });
+  // update note whenever user manually changes selection
+  $('#multiSelect').addEventListener('change', updateToggleNote);
+  // ======================================================
 
   $('#btnFetch').addEventListener('click', async ()=>{
     if(!stations.length){ alert('Chưa nạp danh sách trạm từ Excel.'); return; }
